@@ -1,0 +1,24 @@
+bot:
+  name: VpnHub
+  token: ${BOT_TOKEN}
+  link: t.me/VpnHubbBot
+outline:
+  server: ${OUTLINE_IP}
+  port: ${OUTLINE_PORT}
+  api-key: ${OUTLINE_API_KEY}
+  key-server: isupden.online
+spring:
+  datasource:
+    url: jdbc:postgresql://postgres:5432/
+    username: ${DB_USER}
+    password: ${DB_PASSWORD}
+    driver-class-name: org.postgresql.Driver
+  jpa:
+    hibernate:
+      ddl-auto: update
+server:
+  port: 14556
+payment:
+  url: https://api.yookassa.ru/v3/payments
+  shop-id: ${SHOP_ID}
+  api-key: ${PAYMENT_KEY}
