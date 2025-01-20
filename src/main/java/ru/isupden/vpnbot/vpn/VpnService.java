@@ -2,16 +2,14 @@ package ru.isupden.vpnbot.vpn;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.time.Period;
 import java.time.temporal.ChronoUnit;
-import java.util.List;
 
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
-import ru.isupden.vpnbot.db.entity.PromoCode;
 import ru.isupden.vpnbot.db.entity.User;
-import ru.isupden.vpnbot.db.repo.PromoCodeRepository;
+import ru.isupden.vpnbot.db.entity.VpnConfiguration;
 import ru.isupden.vpnbot.db.repo.UserRepository;
 import ru.isupden.vpnbot.vpn.dto.AccessKey;
 import ru.isupden.vpnbot.vpn.outline.OutlineClient;
@@ -19,11 +17,11 @@ import ru.isupden.vpnbot.vpn.outline.dto.CreateAccessKeyRequest;
 import ru.isupden.vpnbot.vpn.outline.dto.DataLimit;
 
 @Service
+@Slf4j
 public class VpnService {
     @Autowired
     private UserRepository userRepository;
-    @Autowired
-    private PromoCodeRepository promoCodeRepository;
+
     @Autowired
     private OutlineClient outlineClient;
     @Value("${outline.server}")
@@ -38,26 +36,24 @@ public class VpnService {
                 referral = userRepository.findByTelegramId(Long.parseLong(referralId));
             } catch (NumberFormatException ignored){
             }
-            userRepository.save(new User(name, telegramId, referral));
+            var newUser = userRepository.save(new User(name, telegramId, referral));
+            log.info("Created new user: {}", newUser);
         }
     }
 
-    public String generateCode(Long telegramId) {
-        var user = userRepository.findByTelegramId(telegramId);
-        if (user.getAccessUrl() == null) {
+    // TODO валидация наличия подписки
+    public User generateCode(User user) {
+        if (user.getVpnConfiguration() == null || user.getVpnConfiguration().getAccessUrl() == null) {
             var accessKey = outlineClient.createUser(new CreateAccessKeyRequest(
                     user.getName(),
                     "chacha20-ietf-poly1305",
                     new DataLimit(50L * 1000 * 1000 * 1000)
             ));
-            user.setAccessUrl(accessKey.accessUrl());
-            user.setMethod(accessKey.method());
-            user.setPort(accessKey.port());
-            user.setPassword(accessKey.password());
-            user.setServerIp(server);
-            user.setKeyId(accessKey.id());
+            log.info("Created access key: {}; telegramId: {}", accessKey, user.getTelegramId());
+            var vpnConfiguration = new VpnConfiguration(accessKey.accessUrl(), accessKey.password(), accessKey.method(), accessKey.port(), server, accessKey.id());
+            user.setVpnConfiguration(vpnConfiguration);
         }
-        return "ssconf://%s/conf/%s".formatted(keyServer, user.getPassword());
+        return user;
     }
 
     public String getLink(Long telegramId) {
@@ -65,10 +61,10 @@ public class VpnService {
             return null;
         }
         var user = userRepository.findByTelegramId(telegramId);
-        if (user.getAccessUrl() == null) {
+        if (user.getVpnConfiguration() == null || user.getVpnConfiguration().getAccessUrl() == null) {
             return null;
         }
-        return "ssconf://%s/conf/%s".formatted(keyServer, user.getPassword());
+        return "ssconf://%s/conf/%s".formatted(keyServer, user.getVpnConfiguration().getPassword());
     }
 
     public Long getDays(Long telegramId) {
@@ -76,38 +72,19 @@ public class VpnService {
             return null;
         }
         var user = userRepository.findByTelegramId(telegramId);
-        return ChronoUnit.DAYS.between(LocalDate.now(), user.getExpirationDate().toLocalDate());
-    }
-
-    public List<String> getPromoCodes(Long telegramId) {
-        if (!userRepository.existsByTelegramId(telegramId)) {
-            return null;
-        }
-        var user = userRepository.findByTelegramId(telegramId);
-        return promoCodeRepository.findAllByUserId(user.getId()).stream()
-                .filter(promoCode -> promoCode.getExpirationDate().isAfter(LocalDateTime.now()))
-                .map(PromoCode::getPromoCode)
-                .toList();
+        return ChronoUnit.DAYS.between(LocalDate.now(), user.getSubscriptionEndDate().toLocalDate());
     }
 
     public AccessKey getKey(String password) {
-        var user = userRepository.findByPassword(password);
-        return new AccessKey(
-                user.getServerIp(),
-                user.getPort(),
-                user.getPassword(),
-                user.getMethod()
-        );
-    }
-
-    public void setDiscount(String promoCodeString, Long telegramId) {
-        var promoCode = promoCodeRepository.findByPromoCode(promoCodeString);
-        if (!promoCode.getUser().getTelegramId().equals(telegramId)) {
-            return;
+        var user = userRepository.findByVpnConfigurationPassword(password);
+        if (user == null || user.getSubscriptionEndDate().isBefore(LocalDateTime.now())) {
+            return null;
         }
-        var user = promoCode.getUser();
-        user.setPrice(user.getPrice() * (100 - promoCode.getDiscount()) / 100);
-        userRepository.save(user);
-        promoCodeRepository.delete(promoCode);
+        return new AccessKey(
+                user.getVpnConfiguration().getServerIp(),
+                user.getVpnConfiguration().getPort(),
+                user.getVpnConfiguration().getPassword(),
+                user.getVpnConfiguration().getMethod()
+        );
     }
 }

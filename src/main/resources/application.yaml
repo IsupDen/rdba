@@ -6,7 +6,7 @@ outline:
   server: ${OUTLINE_IP}
   port: ${OUTLINE_PORT}
   api-key: ${OUTLINE_API_KEY}
-  key-server: isupden.online
+  key-server: vpnhub-outline.ru
 spring:
   datasource:
     url: jdbc:postgresql://postgres:5432/

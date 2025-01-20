@@ -5,6 +5,7 @@ import java.net.HttpURLConnection;
 
 import javax.net.ssl.HttpsURLConnection;
 
+import lombok.NonNull;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.MediaType;
 import org.springframework.http.client.SimpleClientHttpRequestFactory;
@@ -24,7 +25,7 @@ public class OutlineClient {
         RestTemplate restTemplate = new RestTemplate();
         restTemplate.setRequestFactory(new SimpleClientHttpRequestFactory() {
             @Override
-            protected void prepareConnection(HttpURLConnection connection, String httpMethod) throws IOException {
+            protected void prepareConnection(@NonNull HttpURLConnection connection, @NonNull String httpMethod) throws IOException {
                 if (connection instanceof HttpsURLConnection) {
                     ((HttpsURLConnection) connection).setHostnameVerifier((hostname, session) -> true);
                 }

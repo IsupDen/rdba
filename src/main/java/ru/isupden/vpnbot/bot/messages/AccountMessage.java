@@ -7,12 +7,16 @@ import org.springframework.stereotype.Component;
 import org.telegram.telegrambots.meta.api.methods.updatingmessages.EditMessageText;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.InlineKeyboardButton;
 import ru.isupden.vpnbot.bot.Bot;
+import ru.isupden.vpnbot.bot.messages.metadata.Metadata;
+import ru.isupden.vpnbot.vpn.PromoCodeService;
 import ru.isupden.vpnbot.vpn.VpnService;
 
 @Component("account")
 public class AccountMessage extends Message {
     @Autowired
     private VpnService vpnService;
+    @Autowired
+    private PromoCodeService promoCodeService;
 
     public AccountMessage() {
         super(
@@ -44,7 +48,9 @@ public class AccountMessage extends Message {
     }
 
     @Override
-    public EditMessageText editMessage(Long chatId, Integer messageId) {
+    public EditMessageText editMessage(Metadata metadata) {
+        var chatId = metadata.getChatId();
+        var messageId = metadata.getMassageId();
         String accessKey = vpnService.getLink(chatId);
         if (accessKey == null) {
             return Bot.editMessage(chatId, "Чтобы получить код приобрети подписку", messageId);
@@ -54,7 +60,7 @@ public class AccountMessage extends Message {
                 text.formatted(
                       "`%s`".formatted(vpnService.getDays(chatId)),
                         "`%s`".formatted(accessKey),
-                      String.join("\n", vpnService.getPromoCodes(chatId).stream().map("`%s`"::formatted).toList())
+                      String.join("\n", promoCodeService.getPromoCodes(chatId).stream().map("`%s`"::formatted).toList())
                 ),
                 messageId);
     }

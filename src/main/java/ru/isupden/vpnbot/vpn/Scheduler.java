@@ -32,12 +32,12 @@ public class Scheduler {
                 .filter(promoCode -> promoCode.getExpirationDate().isBefore(LocalDateTime.now()))
                 .toList());
         userRepository.findAll().stream()
-                .filter(user -> user.getExpirationDate() != null)
-                .filter(user -> user.getExpirationDate().isBefore(LocalDateTime.now()))
-                .forEach(user -> outlineClient.SetLimit(user.getKeyId(), new SetLimitRequest(new DataLimit(0))));
+                .filter(user -> user.getSubscriptionEndDate() != null)
+                .filter(user -> user.getSubscriptionEndDate().isBefore(LocalDateTime.now()))
+                .forEach(user -> outlineClient.SetLimit(user.getVpnConfiguration().getKeyId(), new SetLimitRequest(new DataLimit(0))));
         userRepository.findAll().stream()
-                .filter(user -> user.getExpirationDate() != null)
-                .filter(user -> user.getExpirationDate().isBefore(LocalDateTime.now().plusDays(1)) && user.getExpirationDate().isAfter(LocalDateTime.now()))
+                .filter(user -> user.getSubscriptionEndDate() != null)
+                .filter(user -> user.getSubscriptionEndDate().isBefore(LocalDateTime.now().plusDays(1)) && user.getSubscriptionEndDate().isAfter(LocalDateTime.now()))
                 .forEach(user -> {
                     try {
                         bot.execute(createMessage(user.getTelegramId(), "Твоя подписка заканчивается завтра"));

@@ -5,7 +5,7 @@ plugins {
 }
 
 group = "ru.isupden"
-version = "0.0.1-SNAPSHOT"
+version = "0.1.0"
 
 java {
     toolchain {
@@ -37,6 +37,7 @@ dependencies {
     implementation("org.telegram:telegrambotsextensions:6.8.0")
     implementation("javax.xml.bind:jaxb-api:2.3.1")
     implementation("org.apache.commons:commons-text:1.10.0")
+    implementation("com.google.code.gson:gson:2.10.1")
 }
 
 tasks.withType<Test> {

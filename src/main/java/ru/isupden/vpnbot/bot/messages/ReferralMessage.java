@@ -7,6 +7,7 @@ import org.springframework.stereotype.Component;
 import org.telegram.telegrambots.meta.api.methods.updatingmessages.EditMessageText;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.InlineKeyboardButton;
 import ru.isupden.vpnbot.bot.Bot;
+import ru.isupden.vpnbot.bot.messages.metadata.Metadata;
 
 @Component("referral")
 public class ReferralMessage extends Message {
@@ -34,7 +35,9 @@ public class ReferralMessage extends Message {
     }
 
     @Override
-    public EditMessageText editMessage(Long chatId, Integer messageId) {
+    public EditMessageText editMessage(Metadata metadata) {
+        var chatId = metadata.getChatId();
+        var messageId = metadata.getMassageId();
         return Bot.editMessage(chatId, text + "\n`%s?start=%s`".formatted(link, chatId), messageId);
     }
 }

@@ -30,8 +30,10 @@ import ru.isupden.vpnbot.bot.messages.MainMessage;
 import ru.isupden.vpnbot.bot.messages.Message;
 import ru.isupden.vpnbot.bot.messages.PayMassage;
 import ru.isupden.vpnbot.bot.messages.ReferralMessage;
+import ru.isupden.vpnbot.bot.messages.metadata.Metadata;
 import ru.isupden.vpnbot.db.repo.MessageRepository;
 import ru.isupden.vpnbot.db.repo.PromoCodeRepository;
+import ru.isupden.vpnbot.vpn.PromoCodeService;
 import ru.isupden.vpnbot.vpn.VpnService;
 
 @Getter
@@ -56,6 +58,9 @@ public class Bot extends TelegramLongPollingCommandBot {
     @Autowired
     private VpnService vpnService;
 
+    @Autowired
+    private PromoCodeService promoCodeService;
+
     public Bot(@Value("${bot.token}") String botToken) {
         super(botToken);
     }
@@ -69,25 +74,34 @@ public class Bot extends TelegramLongPollingCommandBot {
     public void processNonCommandUpdate(Update update) {
         try {
             if (update.hasCallbackQuery()) {
-                var callData = update.getCallbackQuery().getData();
+                var callData = update.getCallbackQuery().getData().split("#");
                 var messageId = update.getCallbackQuery().getMessage().getMessageId();
                 var chatId = update.getCallbackQuery().getMessage().getChatId();
-                var message = messages.get(callData);
-                var editMassage = message.editMessage(chatId, messageId);
-                var editButtons = message.editButtons(chatId, messageId);
+                var metadata = Metadata.builder()
+                        .chatId(chatId)
+                        .massageId(messageId)
+                        .metadata(callData.length > 1 ? callData[1] : null)
+                        .build();
+                var message = messages.get(callData[0]);
+                var editMassage = message.editMessage(metadata);
+                var editButtons = message.editButtons(metadata);
                 execute(editMassage);
                 if (!editButtons.getReplyMarkup().getKeyboard().isEmpty()) {
                     execute(editButtons);
                 }
             } else if (update.hasMessage()) {
-                //TODO переделать на конечный автомат
+                //TODO вынести в отдельный сервис
                 if (update.getMessage().getText().length() == 10 && promoCodeRepository.existsByPromoCode(update.getMessage().getText())) {
                     var chatId = update.getMessage().getChatId();
-                    vpnService.setDiscount(update.getMessage().getText(), chatId);
+                    promoCodeService.activatePromoCode(update.getMessage().getText(), chatId);
                     var messageId = messageRepository.findByChatId(update.getMessage().getChatId()).getMessageId();
                     var message = messages.get("pay");
-                    var editMassage = message.editMessage(chatId, messageId);
-                    var editButtons = message.editButtons(chatId, messageId);
+                    var metadata = Metadata.builder()
+                            .chatId(chatId)
+                            .massageId(messageId)
+                            .build();
+                    var editMassage = message.editMessage(metadata);
+                    var editButtons = message.editButtons(metadata);
                     execute(editMassage);
                     execute(editButtons);
                     execute(new DeleteMessage(String.valueOf(chatId), update.getMessage().getMessageId()));

@@ -9,6 +9,7 @@ import org.telegram.telegrambots.meta.api.methods.updatingmessages.EditMessageTe
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.InlineKeyboardMarkup;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.InlineKeyboardButton;
 import ru.isupden.vpnbot.bot.Bot;
+import ru.isupden.vpnbot.bot.messages.metadata.Metadata;
 
 import static ru.isupden.vpnbot.bot.Bot.createMessageWithButtons;
 
@@ -22,11 +23,11 @@ public abstract class Message {
         return createMessageWithButtons(chatId, text, buttons);
     }
 
-    public EditMessageText editMessage(Long chatId, Integer messageId) {
-        return Bot.editMessage(chatId, text, messageId);
+    public EditMessageText editMessage(Metadata metadata) {
+        return Bot.editMessage(metadata.getChatId(), text, metadata.getMassageId());
     }
 
-    public EditMessageReplyMarkup editButtons(Long chatId, Integer massageId) {
-        return Bot.editButtons(chatId, new InlineKeyboardMarkup(buttons), massageId);
+    public EditMessageReplyMarkup editButtons(Metadata metadata) {
+        return Bot.editButtons(metadata.getChatId(), new InlineKeyboardMarkup(buttons), metadata.getMassageId());
     }
 }
