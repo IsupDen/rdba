@@ -58,7 +58,6 @@ public class PaymentService {
     }
 
     public void cancelPayment(Notification notification) {
-        //TODO обработать
         if (!notification.object().paid() || !notification.object().status().equals("succeeded")) {
             return;
         }
@@ -74,11 +73,9 @@ public class PaymentService {
                 while (promoCodeRepository.existsByPromoCode(promoCode)) {
                     promoCode = generatePromoCode();
                 }
-                //TODO вынести генерацию
                 promoCodeRepository.save(new PromoCode(promoCode, 0.5, payment.getSubscriptionPlan().getPrice().multiply(BigDecimal.valueOf(0.5)), LocalDateTime.now().plusMonths(1), referral));
             }
             user.setSubscriptionEndDate(LocalDateTime.now().plusMonths(payment.getSubscriptionPlan().getDurationMonths()));
-            //TODO криво
             user = vpnService.generateCode(user);
         } else {
             user.setSubscriptionEndDate(user.getSubscriptionEndDate().plusMonths(payment.getSubscriptionPlan().getDurationMonths()));

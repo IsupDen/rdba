@@ -10,7 +10,9 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import ru.isupden.vpnbot.db.entity.User;
 import ru.isupden.vpnbot.db.entity.VpnConfiguration;
+import ru.isupden.vpnbot.db.repo.ServerRepository;
 import ru.isupden.vpnbot.db.repo.UserRepository;
+import ru.isupden.vpnbot.util.Validator;
 import ru.isupden.vpnbot.vpn.dto.AccessKey;
 import ru.isupden.vpnbot.vpn.outline.OutlineClient;
 import ru.isupden.vpnbot.vpn.outline.dto.CreateAccessKeyRequest;
@@ -24,26 +26,38 @@ public class VpnService {
 
     @Autowired
     private OutlineClient outlineClient;
+
+    @Autowired
+    private ServerRepository serverRepository;
+
     @Value("${outline.server}")
     private String server;
     @Value("${outline.key-server}")
     private String keyServer;
 
     public void createUser(Long telegramId, String referralId, String name) {
+        Validator.validateNotNull(telegramId, "Telegram ID cannot be null");
+        Validator.validateNotEmpty(name, "Name cannot be empty");
+
         if (!userRepository.existsByTelegramId(telegramId)) {
             User referral = null;
             try {
                 referral = userRepository.findByTelegramId(Long.parseLong(referralId));
-            } catch (NumberFormatException ignored){
+            } catch (NumberFormatException ignored) {
+                log.warn("Referral not found: {}", referralId);
             }
             var newUser = userRepository.save(new User(name, telegramId, referral));
             log.info("Created new user: {}", newUser);
         }
     }
 
-    // TODO валидация наличия подписки
     public User generateCode(User user) {
+        Validator.validateNotNull(user, "User cannot be null");
+
         if (user.getVpnConfiguration() == null || user.getVpnConfiguration().getAccessUrl() == null) {
+            if (user.getSubscriptionEndDate() == null || user.getSubscriptionEndDate().isBefore(LocalDateTime.now())) {
+                return user;
+            }
             var accessKey = outlineClient.createUser(new CreateAccessKeyRequest(
                     user.getName(),
                     "chacha20-ietf-poly1305",
@@ -57,6 +71,8 @@ public class VpnService {
     }
 
     public String getLink(Long telegramId) {
+        Validator.validateNotNull(telegramId, "Telegram ID cannot be null");
+
         if (!userRepository.existsByTelegramId(telegramId)) {
             return null;
         }
@@ -68,6 +84,8 @@ public class VpnService {
     }
 
     public Long getDays(Long telegramId) {
+        Validator.validateNotNull(telegramId, "Telegram ID cannot be null");
+
         if (!userRepository.existsByTelegramId(telegramId)) {
             return null;
         }
@@ -76,12 +94,15 @@ public class VpnService {
     }
 
     public AccessKey getKey(String password) {
+        Validator.validateNotEmpty(password, "Password cannot be empty");
+
         var user = userRepository.findByVpnConfigurationPassword(password);
         if (user == null || user.getSubscriptionEndDate().isBefore(LocalDateTime.now())) {
             return null;
         }
+        var serverIp = serverRepository.getTopByOrderByIdAsc().getIp();
         return new AccessKey(
-                user.getVpnConfiguration().getServerIp(),
+                serverIp,
                 user.getVpnConfiguration().getPort(),
                 user.getVpnConfiguration().getPassword(),
                 user.getVpnConfiguration().getMethod()

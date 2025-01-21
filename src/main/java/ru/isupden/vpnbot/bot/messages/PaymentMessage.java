@@ -38,11 +38,33 @@ public class PaymentMessage extends Message {
 
     @Override
     public EditMessageText editMessage(Metadata metadata) {
-        //TODO ошибки
-        var paymentMetadata = gson.fromJson(metadataRepository.findById(UUID.fromString(metadata.getMetadata())).get().getMetadata(), PaymentMetadata.class);
+        if (metadata == null) {
+            throw new IllegalArgumentException("Metadata cannot be null");
+        }
+
+        var metadataId = UUID.fromString(metadata.getMetadata());
+        var paymentMetadata = gson.fromJson(
+                metadataRepository.findById(metadataId).orElseThrow(() -> new IllegalArgumentException("Metadata not found for id: " + metadataId)).getMetadata(),
+                PaymentMetadata.class
+        );
+
         var chatId = metadata.getChatId();
         var messageId = metadata.getMassageId();
+
+        if (chatId == null) {
+            throw new IllegalArgumentException("ChatId cannot be null or empty");
+        }
+
+        if (messageId == null) {
+            throw new IllegalArgumentException("MessageId cannot be null");
+        }
+
         var link = paymentService.createPayment(chatId, paymentMetadata.getSubscriptionId(), paymentMetadata.getPrice());
+
+        if (link == null || link.isEmpty()) {
+            throw new IllegalStateException("Failed to create payment link");
+        }
+
         return Bot.editMessage(chatId, "[Ссылка для оплаты](%s)".formatted(link), messageId);
     }
 }

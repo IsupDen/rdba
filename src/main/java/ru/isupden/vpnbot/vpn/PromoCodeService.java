@@ -25,7 +25,6 @@ public class PromoCodeService {
     public void activatePromoCode(String promoCodeString, Long telegramId) {
         var promoCode = promoCodeRepository.findByPromoCode(promoCodeString);
         if (!promoCode.getAssignedUser().getTelegramId().equals(telegramId)) {
-            //TODO придумать ошибку
             return;
         }
         if (promoCode.getExpirationDate().isAfter(LocalDateTime.now())) {
